@@ -14,6 +14,13 @@ Tree.leaf<A: Type>(x: A): Tree<A>
     Tree.nil!
   )
 
+my_tree: Tree<Nat>
+  Tree.node!(
+    Tree.leaf!(1)
+    2
+    Tree.leaf!(3)
+  )
+
 Tree.map<T: Type, K: Type>(tree: Tree<T>, f: T -> K): Tree<K>
   case tree{
     nil:
@@ -24,4 +31,42 @@ Tree.map<T: Type, K: Type>(tree: Tree<T>, f: T -> K): Tree<K>
 	  f(tree.val)
 	  Tree.map!!(tree.right, f)
       ) :: Tree<K>
+  }
+
+tree: Tree<Nat>
+  Tree.map!!(
+	my_tree
+	(x) x + x // the same as lambda (x): x + x
+  )
+
+Tree.in_order<A: Type>(tree: Tree<A>): List<A>
+  case tree{
+    nil:
+      List.nil!
+    node:
+      List.concat!(
+	  Tree.in_order!(tree.left),
+        tree.val & Tree.in_order!(tree.right)
+	) 
+  }
+  
+Tree.pre_order<A: Type>(tree: Tree<A>): List<A>
+  case tree{
+    nil:
+      List.nil!
+    node:
+      tree.val & List.concat!(
+        Tree.pre_order!(tree.left)
+        Tree.pre_order!(tree.right)
+	)
+  }
+Tree.post_order<A: Type>(tree: Tree<A>): List<A>
+  case tree{
+    nil:
+      List.nil!
+    node:
+      tree.val & List.concat!(
+        Tree.pre_order!(tree.left)
+        Tree.pre_order!(tree.right)
+	)
   }

@@ -2,7 +2,7 @@
 #+author: @o-santi
 #+PROPERTY: header-args:kind :tangle ../src/tree.kind :mkdirp yes
 
-* basics
+* TODO basics
 we will consider any tree to being binary for now..
 
 after we study binary trees a bit we can go forward to non-binary ones.
@@ -19,7 +19,7 @@ type Tree<A: Type>{
 }
 #+end_src
 
-this means that an element of type =Tree= can be constructed in either of the two ways:
+this means that an element of type =Tree= can be constructed in either of the two of the following ways:
 - the simple element =Tree.nil=
 - an object =Tree.node= that holds 2 Trees and a value
 
@@ -27,7 +27,7 @@ since a tree can actually hold anything (just like a list), we can make it depen
 
 also notice that the type =Tree.nil= represents the empty tree (just like =List.nil= represents the empty list) and it doesnt need to depend on anything.
 
-the most basic tree is of the form =< nil, T, nil>=, so we can implement a function that returns it (so that we do not need to repeat it later)
+the most basic tree is of the form =<nil, T, nil>=, so we can implement a function that returns it (so that we do not need to repeat it later)
 #+begin_src kind
 Tree.leaf<A: Type>(x: A): Tree<A>
   Tree.node!(
@@ -38,6 +38,17 @@ Tree.leaf<A: Type>(x: A): Tree<A>
 #+end_src
 
 notice that =Tree.nil= is actually a function of the type =A -> Tree<A>=, so we need to give it the argument (even though it doesnt use it). because of that, we can use the ! to tell kind to infer the type and check it (a *very* cool feature).
+
+with this we can implement a simple tree:
+
+#+begin_src kind
+my_tree: Tree<Nat>
+  Tree.node!(
+    Tree.leaf!(1)
+    2
+    Tree.leaf!(3)
+  )
+#+end_src
 
 we can then implement =Tree.map=, which takes a tree and a function, and returns a new tree with that function applied to each element:
 
@@ -52,5 +63,72 @@ Tree.map<T: Type, K: Type>(tree: Tree<T>, f: T -> K): Tree<K>
 	  f(tree.val)
 	  Tree.map!!(tree.right, f)
       ) :: Tree<K>
+  }
+#+end_src
+that is, just return nil on nil and map the function to the left and to the right. pretty simple right?
+
+we can test it by evaluating for example:
+#+begin_src kind
+tree: Tree<Nat>
+  Tree.map!!(
+	my_tree
+	(x) x + x // the same as lambda (x): x + x
+  ) 
+#+end_src
+i specially named the term =tree= so that we can run it (the same as the file name). kind is a bit fidgety with file names so i avoid getting in its way
+
+we can then run this test doing the following:
+#+begin_src bash
+kind tree --run
+#+end_src
+
+and we see that indeed it returned the tree times two:
+#+begin_src bash
+{ _: 'Tree.node',
+  left:
+   { _: 'Tree.node',
+     left: { _: 'Tree.nil' },
+     val: 2n,
+     right: { _: 'Tree.nil' } },
+  val: 4n,
+  right:
+   { _: 'Tree.node',
+     left: { _: 'Tree.nil' },
+     val: 6n,
+     right: { _: 'Tree.nil' } } }
+#+end_src
+
+we can also implement the traversal functions =in_order=, =pre_order= and =post_order=, which simply transform a Tree into a list:
+#+begin_src kind
+Tree.in_order<A: Type>(tree: Tree<A>): List<A>
+  case tree{
+    nil:
+      List.nil!
+    node:
+      List.concat!(
+	  Tree.in_order!(tree.left),
+        tree.val & Tree.in_order!(tree.right)
+	) 
+  }
+  
+Tree.pre_order<A: Type>(tree: Tree<A>): List<A>
+  case tree{
+    nil:
+      List.nil!
+    node:
+      tree.val & List.concat!(
+        Tree.pre_order!(tree.left)
+        Tree.pre_order!(tree.right)
+	)
+  }
+Tree.post_order<A: Type>(tree: Tree<A>): List<A>
+  case tree{
+    nil:
+      List.nil!
+    node:
+      tree.val & List.concat!(
+        Tree.pre_order!(tree.left)
+        Tree.pre_order!(tree.right)
+	)
   }
 #+end_src
