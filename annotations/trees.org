@@ -1,0 +1,56 @@
+#+title: trees
+#+author: @o-santi
+#+PROPERTY: header-args:kind :tangle ../src/tree.kind :mkdirp yes
+
+* basics
+we will consider any tree to being binary for now..
+
+after we study binary trees a bit we can go forward to non-binary ones.
+
+the most basic binary tree has the following type:
+#+begin_src kind
+type Tree<A: Type>{
+  nil
+  node(
+    left: Tree<A>
+    val: A
+    right: Tree<A>
+  )
+}
+#+end_src
+
+this means that an element of type =Tree= can be constructed in either of the two ways:
+- the simple element =Tree.nil=
+- an object =Tree.node= that holds 2 Trees and a value
+
+since a tree can actually hold anything (just like a list), we can make it dependent on a type, so that all values on the node are of that type.
+
+also notice that the type =Tree.nil= represents the empty tree (just like =List.nil= represents the empty list) and it doesnt need to depend on anything.
+
+the most basic tree is of the form =< nil, T, nil>=, so we can implement a function that returns it (so that we do not need to repeat it later)
+#+begin_src kind
+Tree.leaf<A: Type>(x: A): Tree<A>
+  Tree.node!(
+    Tree.nil!
+    x
+    Tree.nil!
+  )
+#+end_src
+
+notice that =Tree.nil= is actually a function of the type =A -> Tree<A>=, so we need to give it the argument (even though it doesnt use it). because of that, we can use the ! to tell kind to infer the type and check it (a *very* cool feature).
+
+we can then implement =Tree.map=, which takes a tree and a function, and returns a new tree with that function applied to each element:
+
+#+begin_src kind
+Tree.map<T: Type, K: Type>(tree: Tree<T>, f: T -> K): Tree<K>
+  case tree{
+    nil:
+      Tree.nil!
+    node:
+      Tree.node<K>(
+	  Tree.map!!(tree.left, f)
+	  f(tree.val)
+	  Tree.map!!(tree.right, f)
+      ) :: Tree<K>
+  }
+#+end_src

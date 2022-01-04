@@ -1,0 +1,27 @@
+type Tree<A: Type>{
+  nil
+  node(
+    left: Tree<A>
+    val: A
+    right: Tree<A>
+  )
+}
+
+Tree.leaf<A: Type>(x: A): Tree<A>
+  Tree.node!(
+    Tree.nil!
+    x
+    Tree.nil!
+  )
+
+Tree.map<T: Type, K: Type>(tree: Tree<T>, f: T -> K): Tree<K>
+  case tree{
+    nil:
+      Tree.nil!
+    node:
+      Tree.node<K>(
+	  Tree.map!!(tree.left, f)
+	  f(tree.val)
+	  Tree.map!!(tree.right, f)
+      ) :: Tree<K>
+  }
