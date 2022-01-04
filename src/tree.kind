@@ -65,8 +65,11 @@ Tree.post_order<A: Type>(tree: Tree<A>): List<A>
     nil:
       List.nil!
     node:
-      tree.val & List.concat!(
-        Tree.pre_order!(tree.left)
-        Tree.pre_order!(tree.right)
-	)
+      List.concat!(
+        Tree.post_order!(tree.left)
+        List.concat!(
+	    Tree.post_order!(tree.right)
+	    [tree.val]
+	  )
+      )
   }

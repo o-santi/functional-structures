@@ -126,9 +126,13 @@ Tree.post_order<A: Type>(tree: Tree<A>): List<A>
     nil:
       List.nil!
     node:
-      tree.val & List.concat!(
-        Tree.pre_order!(tree.left)
-        Tree.pre_order!(tree.right)
-	)
+      List.concat!(
+        Tree.post_order!(tree.left)
+        List.concat!(
+	    Tree.post_order!(tree.right)
+	    [tree.val]
+	  )
+      )
   }
 #+end_src
+notice that the infix =&= operator is just syntatic sugar for =List.cons=. since =List.cons= accepts a val and a list, we can only use if we are inserting =tree.val= to the left of another list. otherwise, we need to use =List.concat= to concatenate two lists.
