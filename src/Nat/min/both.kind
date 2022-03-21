@@ -1,0 +1,17 @@
+Nat.min.both(a: Nat, b: Nat, c: Nat, H1: Nat.lte(a, c) == true): Nat.lte(Nat.min(a, b), c) == true
+  case a with H1 {
+    zero: refl
+    succ:
+      case b {
+        zero: refl
+	succ:
+	  case c with H1 {
+	    zero: H1 // or H2
+	    succ:
+	      Nat.min.both(a.pred, b.pred, c.pred, H1)
+	  }!
+      }!
+  }!
+
+
+

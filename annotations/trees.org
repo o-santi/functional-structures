@@ -1,8 +1,8 @@
 #+title: trees
 #+author: @o-santi
-#+PROPERTY: header-args:kind :tangle ../src/tree.kind :mkdirp yes
+#+PROPERTY: header-args:kind :tangle ../src/Tree.kind :mkdirp yes
 
-* TODO basics
+* basics
 we will consider any tree to being binary for now..
 
 after we study binary trees a bit we can go forward to non-binary ones.
@@ -69,7 +69,7 @@ that is, just return nil on nil and map the function to the left and to the righ
 
 we can test it by evaluating for example:
 #+begin_src kind
-tree: Tree<Nat>
+Tree: Tree<Nat>
   Tree.map!!(
 	my_tree
 	(x) x + x // the same as lambda (x): x + x
@@ -79,7 +79,7 @@ i specially named the term =tree= so that we can run it (the same as the file na
 
 we can then run this test doing the following:
 #+begin_src bash
-kind tree --run
+kind Tree --run
 #+end_src
 
 and we see that indeed it returned the tree times two:
@@ -136,3 +136,57 @@ Tree.post_order<A: Type>(tree: Tree<A>): List<A>
   }
 #+end_src
 notice that the infix =&= operator is just syntatic sugar for =List.cons=. since =List.cons= accepts a val and a list, we can only use if we are inserting =tree.val= to the left of another list. otherwise, we need to use =List.concat= to concatenate two lists.
+
+we can also implement the size function:
+#+begin_src kind
+Tree.size<A: Type>(tree: Tree<A>): Nat
+  case tree {
+    nil:
+	1
+    node:
+      1 + Tree.size!(tree.left) + Tree.size!(tree.right)
+  }
+#+end_src
+and the two height functions:
+#+begin_src kind
+Tree.height<A: Type>(tree: Tree<A>): Nat
+  // "normal height"
+  case tree {
+    nil:
+      0
+    node:
+      1 + Nat.max(Tree.height!(tree.left), Tree.height!(tree.right))
+  }
+Tree.min_height<A: Type>(tree: Tree<A>): Nat
+  // "normal height"
+  case tree {
+    nil:
+      0
+    node:
+      1 + Nat.min(Tree.height!(tree.left), Tree.height!(tree.right))
+  }
+#+end_src
+
+
+
+* completeness
+we can check to see if a tree is complete (that is, all leaves have the same distance from the root) with the following function:
+#+begin_src kind
+Tree.complete<A: Type>(tree: Tree<A>): Bool
+  case tree {
+    nil: true
+    node:
+      Tree.complete!(tree.left) &&
+      Tree.complete!(tree.right) &&
+      Nat.eql(Tree.height!(tree.left), Tree.height!(tree.right))
+  }
+#+end_src
+
+#+begin_src kind
+full_tree_max_height<A:Type>(
+	tree: Tree<A>
+	H: Tree.complete<A>(tree) == true
+): Nat.eql(Tree.height!(tree), Tree.min_height!(tree))
+  ?cu
+				   
+#+end_src

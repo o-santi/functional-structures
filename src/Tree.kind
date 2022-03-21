@@ -1,0 +1,141 @@
+type Tree<A: Type>{
+  nil
+  node(
+    left: Tree<A>
+    val: A
+    right: Tree<A>
+  )
+}
+
+Tree.leaf<A: Type>(x: A): Tree<A>
+  Tree.node!(
+    Tree.nil!
+    x
+    Tree.nil!
+  )
+
+my_tree: Tree<Nat>
+  Tree.node!(
+    Tree.leaf!(1)
+    2
+    Tree.leaf!(3)
+  )
+
+Tree.map<T: Type, K: Type>(tree: Tree<T>, f: T -> K): Tree<K>
+  case tree{
+    nil:
+      Tree.nil!
+    node:
+      Tree.node<K>(
+	  Tree.map!!(tree.left, f)
+	  f(tree.val)
+	  Tree.map!!(tree.right, f)
+      ) :: Tree<K>
+  }
+
+Tree: Tree<Nat>
+  Tree.map!!(
+	my_tree
+	(x) x + x // the same as lambda (x): x + x
+  )
+
+Tree.in_order<A: Type>(tree: Tree<A>): List<A>
+  case tree{
+    nil:
+      List.nil!
+    node:
+      List.concat!(
+	  Tree.in_order!(tree.left),
+        tree.val & Tree.in_order!(tree.right)
+	) 
+  }
+  
+Tree.pre_order<A: Type>(tree: Tree<A>): List<A>
+  case tree{
+    nil:
+      List.nil!
+    node:
+      tree.val & List.concat!(
+        Tree.pre_order!(tree.left)
+        Tree.pre_order!(tree.right)
+	)
+  }
+Tree.post_order<A: Type>(tree: Tree<A>): List<A>
+  case tree{
+    nil:
+      List.nil!
+    node:
+      List.concat!(
+        Tree.post_order!(tree.left)
+        List.concat!(
+	    Tree.post_order!(tree.right)
+	    [tree.val]
+	  )
+      )
+  }
+
+Tree.size<A: Type>(tree: Tree<A>): Nat
+  case tree {
+    nil:
+	1
+    node:
+      Tree.size!(tree.left) + Tree.size!(tree.right)
+  }
+
+Tree.height<A: Type>(tree: Tree<A>): Nat
+  // "normal height"
+  case tree {
+    nil:
+      0
+    node:
+      1 + Nat.max(Tree.height!(tree.left), Tree.height!(tree.right))
+  }
+Tree.min_height<A: Type>(tree: Tree<A>): Nat
+  // "normal height"
+  case tree {
+    nil:
+      0
+    node:
+      1 + Nat.min(Tree.height!(tree.left), Tree.height!(tree.right))
+  }
+
+Tree.complete<A: Type>(tree: Tree<A>): Bool
+  case tree {
+    nil: true
+    node:
+      Tree.complete!(tree.left) &&
+      Tree.complete!(tree.right) &&
+      Nat.eql(Tree.height!(tree.left), Tree.height!(tree.right))
+  }
+
+// full_tree_max_height<A:Type>(
+// 	tree: Tree<A>
+// 	H: Tree.complete<A>(tree) == true
+// ): Nat.eql(Tree.height!(tree), Tree.min_height!(tree)) == true
+//   case tree with H {
+//     nil: refl
+//     node:
+//       let min = Tree.min_height!(tree)
+//       let max = Tree.height!(tree)
+//       Nat.eql(min, max) == true
+//   }!
+
+size_height<A: Type>(
+  t: Tree<A>
+): Nat.lte(Tree.size!(t), Nat.pow(2, Tree.height!(t))) == true
+  case t {
+    nil: refl
+    node:
+      case (Nat.lte(Tree.height!(t.left),Tree.height!(t.right))){
+        true:
+	  let size = Tree.size!(t.left) + Tree.size!(t.right)
+	  ?true
+
+	false: ?cu2
+      }!
+  }!
+
+
+
+
+

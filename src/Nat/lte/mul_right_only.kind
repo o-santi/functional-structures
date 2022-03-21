@@ -1,0 +1,11 @@
+Nat.lte.mul_right_only(
+  a: Nat
+  b: Nat
+  c: Nat
+  H1: Nat.lte(a, b) == true
+  H2: Nat.lte(1, c) == true
+): Nat.lte(a, Nat.mul(b, c)) == true
+  let lemma = Nat.Order.mul.left(1, c, b, H2) // b * 1 <= b * c
+  let lemma2 = lemma :: rewrite X in (Nat.lte(X, b*c) == true) with Nat.mul.one_right(b) // b = b * 1
+  Nat.Order.chain(a, b, b*c, H1, lemma2) 
+

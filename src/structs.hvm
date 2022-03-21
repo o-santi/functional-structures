@@ -1,0 +1,214 @@
+// Author: Leonardo Santiago (@o-santi)
+
+
+// ===============================
+// The following equations are general functions
+// that are sometimes needed to implement algorithms
+// ================================
+
+(IfElse 1 then else) = then
+(IfElse 0 then else) = else
+
+(Not 1) = 0
+(Not 0) = 1
+
+(<= a b) = (Not (> a b))
+(>= a b) = (Not (< a b))
+
+(Max a b) = (IfElse (> a b) a b)
+(Min a b) = (IfElse (> a b) b a)
+
+(Range 1 xs) = xs
+(Range n xs) =
+  let m = (- n 1)
+  (Range m (Cons m xs))
+
+(ReverseGo Nil ys) = ys
+(ReverseGo (Cons x xs) ys) = (ReverseGo xs (Cons x ys))
+
+(Randoms s 0) = (Nil)
+(Randoms s l) = (Cons s (Randoms (% (+ (* s 1664525) 1013904223) 101) (- l 1)))
+
+(Reverse list) = (ReverseGo list Nil)
+
+(Append x Nil) = (Cons x Nil)
+(Append x (Cons y ys)) = (Cons y (Append x ys))
+
+// joins two lists
+(Concat Nil ys )         = ys
+(Concat (Cons x xs) ys)  = (Cons x (Concat xs ys))
+
+(Concat xs ys) = (ConcatGo xs ys Nil)
+
+(Filter f Nil) = Nil
+(Filter f (Cons x xs)) =
+  (IfElse (f x)
+    (Cons x (Filter f xs))
+    (Filter f xs))
+
+// list length
+
+(Length Nil) = 0
+(Length (Cons x xs)) = (+ 1 (Length xs))
+
+
+// Map
+
+(Map f Nil)         = Nil
+(Map f (Cons x xs)) = (Cons (f x) (Map f xs))
+
+// Fold
+// actually its foldl
+// but for now it wont make any difference
+
+(FoldGo f z Nil)         = z
+(FoldGo f z (Cons x xs)) = (FoldGo f (f z x) xs)
+
+(Fold f Nil)         = Nil
+(Fold f (Cons x xs)) = (FoldGo f x xs)
+
+Sum = λxλy(+ x y)
+
+Mul = λxλy(* x y)
+
+// Take
+
+(Take 0 list) = Nil
+(Take n (Cons x xs)) = (Cons x (Take (- n 1) xs))
+
+// Drop
+
+(Drop 0 list) = list
+(Drop n (Cons x xs)) = (Drop (- n 1) xs) 
+
+// =============================================================
+// List sorting algorithms
+// the following algorithms are presented in the book
+// Functional Algorithms Verified
+// ===========================================================
+
+// Insertion sort
+
+(Insort x Nil) = (Cons x Nil)
+(Insort x (Cons y ys)) =
+  (IfElse (< x y)
+    (Cons x (Cons y ys))
+    (Cons y (Insort x ys)))
+
+(ISort Nil) = Nil
+(ISort (Cons x xs)) = (Insort x (ISort xs))
+
+// Quicksort
+// this is very bad
+// and i mean very bad
+// i still dont quite know why, but i will leave it as is for now
+
+(Quicksort Nil) = Nil
+(Quicksort (Cons x xs)) =
+  let antes = (Quicksort (Filter λy(< y x) xs))
+  let depois = (Quicksort (Filter λy(>= y x) xs))
+  (Concat antes (Cons x depois))
+
+// Topdown Merge sort
+
+(Merge xs Nil) = xs
+(Merge Nil ys) = ys
+(Merge (Cons x xs) (Cons y ys)) =
+  (IfElse (<= x y)
+	      (Cons x (Merge xs (Cons y ys)))
+	      (Cons y (Merge (Cons x xs) ys)))
+
+(MSort xs) =
+  let n = (Length xs)
+  (IfElse (<= n 1)
+    xs
+    (Merge (MSort (Take (>> n 1) xs))
+           (MSort (Drop (>> n 1) xs)))) 
+
+// Bottom up Merge Sort
+// Like top-down merge but recursively joins sets of lists
+// until only one is left
+
+(Merge_adj Nil) = Nil
+(Merge_adj (Cons x Nil)) = (Cons x Nil)
+(Merge_adj (Cons xs (Cons ys zs))) = (Cons (Merge xs ys) (Merge_adj zs))
+
+(Merge_all Nil) = Nil
+(Merge_all (Cons x Nil)) = x
+(Merge_all xs)  = (Merge_all (Merge_adj xs))
+
+(BotMSort xs) = (Merge_all (Map λx(Cons x Nil) xs))
+
+// Natural Merge sort
+// like bottom-up but efficient for small length aswell
+// it will try to split the list into ascending and descending
+// runs of elements
+
+(Runs Nil) = Nil
+(Runs (Cons x Nil)) = (Cons (Cons x Nil) Nil)
+(Runs (Cons a (Cons b xs))) =
+  (IfElse (< b a)
+	  (Desc b (Cons a Nil) xs)
+	  (Asc  b λk(Cons a k) xs))  // function that insert `a` to a new list
+
+// notice that ascending needs to append an item at the end
+// and append is O(n) so it would end up making Asc O(n^2)
+// to solve that we could use Cons and then reverse at the end
+// but what i ended up doing (as the book did)
+// is using lambda encoding for lists, make an "element" be a function that inserts
+// an element into a list.
+// so [a] -> @k (Cons a k)
+// and when we want to force it into a list we simply apply it to Nil
+
+(Asc a as Nil) = (Cons (as (Cons a Nil)) Nil) 
+(Asc a as (Cons b bs)) =
+  (IfElse (>= b a)
+	  (Asc b λk(as (Cons a k)) bs)
+	  (Cons (as (Cons a Nil)) (Runs (Cons b bs))))
+
+(Desc a as Nil) = (Cons a as)
+(Desc a as (Cons b bs)) =
+  (IfElse (< b a)
+	  (Desc b (Cons a as) bs)
+	  (Cons (Cons a as) (Runs (Cons b bs))))
+
+(NatMSort list) = (Merge_all (Runs list))
+
+
+// Comparison with random n = 1000 
+// Bot   =   2 066 614 rewrites
+// Top   =   2 170 831 rewrites 
+// Nat   =   3 215 566 rewrites (x1.5 ish?)
+// QSort =   7 350 273 rewrites (x3.5 ish?) 
+// ISort = 227 146 635 rewrites (x100)
+
+// Insertion is obviously worse because of O(n^2)
+// but i do think quicksort can be better (and i just did it poorly)
+// of course, it is not designed to use the parallelization and stuff like that of hvm
+
+
+// ==============================
+// Trees
+// type Tree<T> {
+//   Empty
+//   Node(l: Tree<t>,x:T, r:Tree<T>)
+// }
+// ==============================
+
+(Single a) = (Node Empty a Empty)
+
+(MapTree f Empty) = Empty
+(MapTree f (Node l x r)) = (Node (MapTree f l) (f x) (MapTree f r))
+
+(Size (Empty)) = 0
+(Size (Node l x r)) = (+ 1 (+ (Size l) (Size r)))
+
+(Height (Empty)) = 0
+(Height (Node l x r)) = (+ 1 (Max (Height l) (Height r)))
+
+(MinHeight (Empty)) = 0
+(MinHeight (Node l x r)) = (+ 1 (Min (Height l) (Height r)))
+
+(Main n) =
+  let t = (Node (Single 1) 2 (Single 3))
+  (MapTree @k(* 2 k) t) 
