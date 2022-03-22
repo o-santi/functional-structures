@@ -81,6 +81,23 @@ Mul = λxλy(* x y)
 (Drop 0 list) = list
 (Drop n (Cons x xs)) = (Drop (- n 1) xs) 
 
+// Case
+// this is the best i've thought yet
+// it expects that `match` is a function that receives all it's args
+// in the order given bellow
+
+(Case (Nil)      fst_match snd_match) = (fst_match)
+(Case (Cons a b) fst_match snd_match) = (snd_match a b)
+
+// i dont exactly know how to generalize this without actually
+// writing all constructors by hand
+
+// idk how to do this?
+// iterate through cases?
+// try each one?
+// how to back track?
+
+
 // =============================================================
 // List sorting algorithms
 // the following algorithms are presented in the book
@@ -149,7 +166,7 @@ Mul = λxλy(* x y)
 (Runs (Cons a (Cons b xs))) =
   (IfElse (< b a)
 	  (Desc b (Cons a Nil) xs)
-	  (Asc  b λk(Cons a k) xs))  // function that insert `a` to a new list
+	  (Asc  b λk(Cons a k) xs))  // function that inserts `a` to a new list
 
 // notice that ascending needs to append an item at the end
 // and append is O(n) so it would end up making Asc O(n^2)
@@ -184,7 +201,7 @@ Mul = λxλy(* x y)
 
 // Insertion is obviously worse because of O(n^2)
 // but i do think quicksort can be better (and i just did it poorly)
-// of course, it is not designed to use the parallelization and stuff like that of hvm
+// of course, it was not written to use naturally use the parallelization and stuff like that of hvm
 
 
 // ==============================
@@ -193,9 +210,15 @@ Mul = λxλy(* x y)
 //   Empty
 //   Node(l: Tree<t>,x:T, r:Tree<T>)
 // }
+//
+// bellow are some generic functions
+// related to trees
 // ==============================
 
 (Single a) = (Node Empty a Empty)
+
+(IsEmpty Empty)        = 1
+(IsEmpty (Node _ _ _)) = 0
 
 (MapTree f Empty) = Empty
 (MapTree f (Node l x r)) = (Node (MapTree f l) (f x) (MapTree f r))
@@ -209,6 +232,157 @@ Mul = λxλy(* x y)
 (MinHeight (Empty)) = 0
 (MinHeight (Node l x r)) = (+ 1 (Min (Height l) (Height r)))
 
+// |========================|
+// BST - Binary search trees
+// insertion, membership, deletion
+// |========================|
+
+// Following the book, i will use a little shortcut to compare 2 elements
+// called (Compare a b) that will take the 3 paths for the comparison as argument.
+
+(Compare a b less equal bigger) =
+  (IfElse (< a b)
+    less
+    (IfElse (> a b)
+      bigger
+      equal))
+
+// Membership in a BST
+(IsIn _ (Empty))      = 0 // False
+(IsIn a (Node l x r)) =
+  (Compare a x
+    (IsIn a l)  // if a < x then check in left branch
+    1           // a == x -> True, 'cuz a is equal to an elem in the tree
+    (IsIn a r)) // if a > x then check in right branch
+    
+// Insertion
+
+(Insert a (Empty)) = (Single a)
+(Insert a (Node l x r)) =
+  (Compare a x
+    (Node (Insert a l) x r) // if a < x then insert in left
+    (Node l x r) // if a == x just insert in place 
+    (Node l x (Insert a r))) // if a > x then insert in right
+
+// note that this makes so that a tree cannot have multiple equal elements 
+
+(Delete a (Empty)) = Empty
+(Delete a (Node l x r)) =
+  (Compare a x
+    (Node (Delete a l) x r)
+    (IfElse (IsEmpty r)
+      l
+      (Join l r)) // join the two branches (excluding a)
+    (Node l x (Delete a r)))
+
+(Join t (Empty)) = t
+(Join (Empty) t) = t
+(Join (Node t1 a t2) (Node t3 b t4)) =
+  (Join.1 t1 t4 a b (Join t2 t3))
+    
+(Join.1 t1 t4 a b (Empty)) = (Node t1 a (Node Empty b t4))
+(Join.1 t1 t4 a b (Node u2 x u3)) = (Node (Node t1 a u2) x (Node u3 b t4))
+
+
+// this is basically a complete implementation of maps
+// the problem is that insertion into that map
+// does not necessarily preserve balance
+// meaning that maybe Height(Tree) > Log(Size(Tree))
+// which defeats the purpose of implementing Trees for fast lookup.
+
+// now we will see some special trees that preserve balance
+
+// |===========================|
+// 2-3 Trees
+//
+// an example of a data type that preserves balance of the tree
+// these are of the type
+// type Tree23<T> {
+//   Empty
+//   Node(l: Tree23, a: T, r: Tree23)
+//   Node(l: Tree23, a: T, m: Tree23, b: T, r: Tree23)
+//  }
+// where you can build a node with 3 children.
+// |===========================|
+
+// we will use the afore-defined function to normal BST's
+// forget about type safety and such things like that for a second
+(IsIn x (Node l a m b r)) =
+  (Compare x a
+    (IsIn x l)
+    1 // true
+    (Compare x b
+      (IsIn x m)
+      1 // true
+      (IsIn x r)))
+
+(TreeI (Success  t)) = t
+(TreeI (Overflow l a r)) = (Node l a r)
+
+(Insert23 x t) = (TreeI (Insert23.Go x t)) 
+
+(Insert23.Go x (Empty)) = (Overflow Empty x Empty)
+//(Insert23.Go x (Node l a r)) =
+//(Compare x a
+//      (
+
+
+// |==============================|
+// Red Black Trees
+//
+// type RBTree {
+//   Empty
+//   Red(l, a, r)
+//   Black(l, a, r)
+// }
+// |==============================|
+
+(Paint (Black) (Red l a r)) = (Black l a r)
+(Paint (Black) (Black l a r)) = (Black l a r)
+
+(InsertRB x t) = (Paint Black (InsertRB.Go x t))
+
+(InsertRB.Go x (Empty)) = (Red Empty x Empty)
+(InsertRB.Go x (Black l a r)) = 
+  (Compare x a
+    (BalanceLeft  (InsertRB.Go x l) a r)
+    (Black l a r)
+    (BalanceRight l a (InsertRB.Go x r)))
+
+(InsertRB.Go x (Red l a r)) = 
+  (Compare x a
+    (Red (InsertRB.Go x l) a r)
+    (Red l a r)
+    (Red l a (InsertRB.Go x r)))
+ 
+(BalanceLeft (Red (Red t1 a t2) b t3) c t4) = (Red (Black t1 a t2) b (Black t3 c t4))
+(BalanceLeft (Red t1 a (Red t2 b t3)) c t4) = (Red (Black t1 a t2) b (Black t3 c t4))
+(BalanceLeft t1 a t2) = (Black t1 a t2)
+
+(BalanceRight t1 a (Red t2 b (Red t3 c t4))) = (Red (Black t1 a t2) b (Black t3 c t4))
+(BalanceRight t1 a (Red (Red t2 b t3) c t4)) = (Red (Black t1 a t2) b (Black t3 c t4))
+(BalanceRight t1 a t2)  = (Black t1 a t2) 
+
+(FoldWith f z Nil) = z
+(FoldWith f z (Cons x xs)) = (FoldWith f (f x z) xs)
+
+(Height (Red l _ r)) = (+ 1 (Max (Height l) (Height r)))
+(Height (Black l _ r)) = (+ 1 (Max (Height l) (Height r)))
+
+(IsIn _ (Empty)) = 0 // false
+(IsIn x (Red l a r)) =
+  (Compare x a
+    (IsIn x l)
+    1
+    (IsIn x r))
+(IsIn x (Black l a r)) =
+  (Compare x a
+    (IsIn x l)
+    1
+    (IsIn x r))
+
 (Main n) =
-  let t = (Node (Single 1) 2 (Single 3))
-  (MapTree @k(* 2 k) t) 
+  let inserts = (Range n Nil) 
+  let new = (FoldWith @a@b(InsertRB a b) Empty inserts)
+  let test = (InsertRB 2 (InsertRB 1 Empty))
+  (IsIn (- n 1) new)
