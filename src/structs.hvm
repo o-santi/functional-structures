@@ -1,6 +1,5 @@
 // Author: Leonardo Santiago (@o-santi)
 
-
 // ===============================
 // The following equations are general functions
 // that are sometimes needed to implement algorithms
@@ -15,13 +14,20 @@
 (<= a b) = (Not (> a b))
 (>= a b) = (Not (< a b))
 
+
 (Max a b) = (IfElse (> a b) a b)
 (Min a b) = (IfElse (> a b) b a)
 
-(Range 1 xs) = xs
+(Range 0 xs) = xs
 (Range n xs) =
   let m = (- n 1)
   (Range m (Cons m xs))
+
+(Head Nil) = Nil
+(Head (Cons x xs)) = x
+
+(Tail Nil) = Nil
+(Tail (Cons x xs)) = xs
 
 (ReverseGo Nil ys) = ys
 (ReverseGo (Cons x xs) ys) = (ReverseGo xs (Cons x ys))
@@ -35,10 +41,13 @@
 (Append x (Cons y ys)) = (Cons y (Append x ys))
 
 // joins two lists
-(Concat Nil ys )         = ys
-(Concat (Cons x xs) ys)  = (Cons x (Concat xs ys))
 
-(Concat xs ys) = (ConcatGo xs ys Nil)
+(Concat Nil ys)         = ys
+(Concat (Cons x xs) ys) = (Cons x (Concat xs ys)) 
+// (Concat (Cons x xs) ys)  = (Concat.Fold λk(Cons x k) ys xs)
+
+// (Concat.Fold f z Nil)    = (f z)
+// (Concat.Fold f z (Cons x xs)) = (Concat.Fold λk(f (Cons x k)) z xs)
 
 (Filter f Nil) = Nil
 (Filter f (Cons x xs)) =
@@ -61,11 +70,11 @@
 // actually its foldl
 // but for now it wont make any difference
 
-(FoldGo f z Nil)         = z
-(FoldGo f z (Cons x xs)) = (FoldGo f (f z x) xs)
+(Foldl f Nil z)         = z
+(Foldl f (Cons x xs) z) = (Foldl f xs (f z x))
 
-(Fold f Nil)         = Nil
-(Fold f (Cons x xs)) = (FoldGo f x xs)
+(Foldr f Nil z)         = z
+(Foldr f (Cons x xs) z) = (f x (Foldr f xs z))
 
 Sum = λxλy(+ x y)
 
@@ -132,8 +141,8 @@ Mul = λxλy(* x y)
 (Merge Nil ys) = ys
 (Merge (Cons x xs) (Cons y ys)) =
   (IfElse (<= x y)
-	      (Cons x (Merge xs (Cons y ys)))
-	      (Cons y (Merge (Cons x xs) ys)))
+   	  (Cons x (Merge xs (Cons y ys)))
+          (Cons y (Merge (Cons x xs) ys)))
 
 (MSort xs) =
   let n = (Length xs)
@@ -145,6 +154,7 @@ Mul = λxλy(* x y)
 // Bottom up Merge Sort
 // Like top-down merge but recursively joins sets of lists
 // until only one is left
+// this version is implemented in Functional Algorithms Verified
 
 (Merge_adj Nil) = Nil
 (Merge_adj (Cons x Nil)) = (Cons x Nil)
@@ -167,12 +177,11 @@ Mul = λxλy(* x y)
   (IfElse (< b a)
 	  (Desc b (Cons a Nil) xs)
 	  (Asc  b λk(Cons a k) xs))  // function that inserts `a` to a new list
-
 // notice that ascending needs to append an item at the end
 // and append is O(n) so it would end up making Asc O(n^2)
 // to solve that we could use Cons and then reverse at the end
 // but what i ended up doing (as the book did)
-// is using lambda encoding for lists, make an "element" be a function that inserts
+// is using  encoding for lists, make an "element" be a function that inserts
 // an element into a list.
 // so [a] -> @k (Cons a k)
 // and when we want to force it into a list we simply apply it to Nil
@@ -203,6 +212,47 @@ Mul = λxλy(* x y)
 // but i do think quicksort can be better (and i just did it poorly)
 // of course, it was not written to use naturally use the parallelization and stuff like that of hvm
 
+// =============================
+// Queues
+// type Queue<T> {
+//   F : List
+//   R : List
+//   S : List
+// }
+// in functional languages, queues are implemented as
+// 2 lists: one for the front F, and one for the tail R (in reverse)
+// alongside with the order in which they should be evaluated 
+// append is done by Consing to R, and removal
+// is done with a little bit of black magic
+// it is the first appearance of Amortized analysis in this file.
+//
+// we should maintain it in such a way that
+// F is only Nil when R is also Nil
+// if F is Nil and R is not Nil, we must transfer R to F (in reverse)
+// and we do this transfering process in Balance
+
+(Queue.front (Q Nil        _ _)) = Nil
+(Queue.front (Q (Cons x f) _ _)) = x
+
+(Queue.push_back  (Q f r s) x)        = (Queue.balance f (Cons x r) s)
+(Queue.push_front (Q f r s) x)        = (Q (Cons x f) r (Cons x s))
+(Queue.pop_front  (Q Nil _ _))        = Nil
+(Queue.pop_front  (Q (Cons x f) r s)) = (Queue.balance f r s) 
+(Queue.pop_back   (Q _ Nil _))        = Nil
+(Queue.pop_back   (Q f (Cons x r) s)) = (Queue.balance f r s)
+
+// in the case that there are more elements in
+// R than F, we append R reversed to F and set R to Nil 
+(Queue.balance f r (Cons x s))        = (Q f r s)
+(Queue.balance f r s) =
+  let new_f = (Rotate f r Nil)
+  (Q new_f Nil new_f)
+
+//initialize an empty Queue
+(Queue.empty) = (Q Nil Nil Nil)
+
+(Rotate Nil (Cons y _) a) = (Cons y a)
+(Rotate (Cons x f) (Cons y r) a) = (Cons x (Rotate f r (Cons y a))) 
 
 // ==============================
 // Trees
@@ -214,8 +264,6 @@ Mul = λxλy(* x y)
 // bellow are some generic functions
 // related to trees
 // ==============================
-
-(Single a) = (Node Empty a Empty)
 
 (IsEmpty Empty)        = 1
 (IsEmpty (Node _ _ _)) = 0
@@ -345,9 +393,9 @@ Mul = λxλy(* x y)
 (InsertRB.Go x (Empty)) = (Red Empty x Empty)
 (InsertRB.Go x (Black l a r)) = 
   (Compare x a
-    (BalanceLeft  (InsertRB.Go x l) a r)
+    (Balance  (InsertRB.Go x l) a r)
     (Black l a r)
-    (BalanceRight l a (InsertRB.Go x r)))
+    (Balance l a (InsertRB.Go x r)))
 
 (InsertRB.Go x (Red l a r)) = 
   (Compare x a
@@ -355,13 +403,11 @@ Mul = λxλy(* x y)
     (Red l a r)
     (Red l a (InsertRB.Go x r)))
  
-(BalanceLeft (Red (Red t1 a t2) b t3) c t4) = (Red (Black t1 a t2) b (Black t3 c t4))
-(BalanceLeft (Red t1 a (Red t2 b t3)) c t4) = (Red (Black t1 a t2) b (Black t3 c t4))
-(BalanceLeft t1 a t2) = (Black t1 a t2)
-
-(BalanceRight t1 a (Red t2 b (Red t3 c t4))) = (Red (Black t1 a t2) b (Black t3 c t4))
-(BalanceRight t1 a (Red (Red t2 b t3) c t4)) = (Red (Black t1 a t2) b (Black t3 c t4))
-(BalanceRight t1 a t2)  = (Black t1 a t2) 
+(Balance (Red (Red t1 a t2) b t3) c t4) = (Red (Black t1 a t2) b (Black t3 c t4))
+(Balance t1 a (Red (Red t2 b t3) c t4)) = (Red (Black t1 a t2) b (Black t3 c t4))
+(Balance (Red t1 a (Red t2 b t3)) c t4) = (Red (Black t1 a t2) b (Black t3 c t4))
+(Balance t1 a (Red t2 b (Red t3 c t4))) = (Red (Black t1 a t2) b (Black t3 c t4))
+(Balance t1 a t2)  = (Black t1 a t2)
 
 (FoldWith f z Nil) = z
 (FoldWith f z (Cons x xs)) = (FoldWith f (f x z) xs)
@@ -375,14 +421,111 @@ Mul = λxλy(* x y)
     (IsIn x l)
     1
     (IsIn x r))
+    
 (IsIn x (Black l a r)) =
   (Compare x a
     (IsIn x l)
     1
     (IsIn x r))
 
+// ========================================
+// Finger Trees
+
+// type FTree<T> {
+//   Empty
+//   Single(a: T)
+//   Deep(Digit<T>(a:T), FTree<T>(Node<T>(a: T)), Digit<T>(a: T))
+// }
+// type Digit<T> {
+//   One(a: T)
+//   Two(a: T, a:T)
+//   Three(a: T, a:T, a:T)
+//   Four(a: T, a:T, a: T)
+// }
+// basically overpowered 2-3 threes
+
+// ==========================================|
+
+(Reducer f (One a) z) = (f z a)
+(Reducer f (Two a b) z) = (f (f z b) a)
+(Reducer f (Three a b c) z) = (f (f (f z c) b) a)
+(Reducer f (Four a b c d) z) = (f (f (f (f z d) c) b) a)
+
+(Reducer f (Node2 a b)   z) = (f (f z b))
+(Reducer f (Node3 a b c) z) = (f (f (f z c) b) a)
+
+(Reducer f Empty          z) = z
+(Reducer f (Single x)     z) = (f x z)
+(Reducer f (Deep pr m sf) z) =
+  let right  = (Reducer f sf z)
+  let middle = (Reducer λsλe(Reducer f e s) m right)
+  (Reducer f pr middle)
+  
+(Reducer f Nil z) = z
+(Reducer f (Cons x xs) z) = (Foldr f (Cons x xs) z)
+
+(Reducel f Empty          z) = z
+(Reducel f (Single x)     z) = (f x z)
+(Reducel f (Deep pr m sf) z) =
+  let left  = (Reducel f pr z)
+  let middle = (Reducel λsλe(Reducel f e s) m left)
+  (Reducel f sf middle)
+
+(Reducel f (Node2 a b)    z) = (f (f z a) b)
+(Reducel f (Node3 a b c)  z) = (f (f (f z a) b) c)
+
+(Reducel f (One a) z) = (f z a)
+(Reducel f (Two a b) z) = (f (f z a) b)
+(Reducel f (Three a b c) z) = (f (f (f z a) b) c)
+(Reducel f (Four a b c d) z) = (f (f (f (f z a) b) c) d)
+
+(FTree.push_left Empty a) = (Single a)
+(FTree.push_left (Single b) a) = (Deep (One a) Empty (One b))
+(FTree.push_left (Deep (Four b c d e) m sf) a) =
+  (Deep (Two a b) (FTree.push_left m (Node3 c d e)) sf)
+(FTree.push_left (Deep pr m sf) a) =
+  (Deep (FTree.digit.snoc a pr) m sf)
+
+(FTree.push_right Empty a) = (Single a)
+(FTree.push_right (Single b) a) = (Deep (One b) Empty (One a))
+(FTree.push_right (Deep pr m (Four e d c b)) a) =
+  (Deep pr (FTree.push_right m (Node3 e d c)) (Two b a))
+(FTree.push_right (Deep pr m sf) a) =
+  (Deep pr m (FTree.digit.cons a sf))
+
+(FTree.to_tree list) = (Reducer λelemλstruct(FTree.push_left struct elem) list Empty)  
+
+(FTree.digit.snoc a (One b)) = (Two a b)
+(FTree.digit.snoc a (Two b c)) = (Three a b c)
+(FTree.digit.snoc a (Three b c d)) = (Four a b c d)
+
+(FTree.digit.cons a (One b)) = (Two b a)
+(FTree.digit.cons a (Two b c)) = (Three b c a)
+(FTree.digit.cons a (Three b c d)) = (Four b c d a)
+
+
+
+// to make concat work, i need to write the FTree.nodes function
+// but it has a lot of cases and i think it is not only very boring but very error-prone
+// so im still thinking about how to do this
+// (FTree.glue Empty xs right) = (Reducer λsλe(FTree.push_left  e s) right xs)
+// (FTree.glue left  xs Empty) = (Reducel λsλe(FTree.push_right e s) left  xs)
+// (FTree.glue (Single x) xs right) = (FTree.push_left  (Reducer λsλe(FTree.push_left  e s) xs right) x)
+// (FTree.glue left xs (Single x))  = (FTree.push_right (Reducel λsλe(FTree.push_right e s) xs left ) x)
+// (FTree.glue (Deep pr_1 m_1 sf_1) ts (Deep pr_2 m_2 sf_2)) =
+//   let glue_middle = (FTree.glue m_1 (FTree.nodes (Concat sf_1 (Concat ts pr_2))) m_2)
+//   (Deep pr_1 glue_middle sf_2)
+
+// (Concat (One a) b) = (FTree.digit.cons a b)
+// (Concat (Two a b) c) = (FTree.digit.cons 
+
+// (FTree.nodes (One a) b) = (Cons (Node2 a b) Nil)
+
+
+(FTree.concat first second) = (FTree.glue first Nil second)
+
+
 (Main n) =
-  let inserts = (Range n Nil) 
-  let new = (FoldWith @a@b(InsertRB a b) Empty inserts)
-  let test = (InsertRB 2 (InsertRB 1 Empty))
-  (IsIn (- n 1) new)
+  let inserts = (Range n Nil)
+  let ftree = (FTree.to_tree inserts)
+  (FTree.concat ftree ftree)
