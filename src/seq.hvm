@@ -22,7 +22,7 @@
 // we can access the nth element of the structure in relatively cheap time
 
 // this still has a lot of bugs and dumb code. and it has zero type notation,
-// as i still dont know exactly kind 2 wants me to do it
+// as i still dont know exactly how kind 2 wants me to do it
 
 
 (Range 0 xs) = xs
@@ -82,14 +82,22 @@
 (Reducel f (Three a b c) z) = (f (f (f z a) b) c)
 (Reducel f (Four a b c d) z) = (f (f (f (f z a) b) c) d)
 
+
+// function that returns a special kind of cons list
+// of the type (Cons V (FingerTree V)), that is:
+// it uses the same Nil and Cons constructors (maybe i should give them new names)
+// but the tails are always well-formed Finger trees
+// This is very useful for element deletion in a persistent way
 (FTree.viewl Empty) = (View Nil)
 (FTree.viewl (Single x)) = (View (Cons x Empty))
 (FTree.viewl (Deep c pr m sf)) = (View (Cons (FTree.digit.head pr) (FTree.deepl (FTree.digit.tail pr) m sf)))
 
+// same function but for right side
 (FTree.viewr Empty) = (View Nil)
 (FTree.viewr (Single x)) = (View (Cons x Empty))
 (FTree.viewr (Deep c pr m sf)) = (View (Cons (FTree.digit.last sf) (FTree.deepr pr m (FTree.digit.but_last sf))))
 
+// helper function to keep the middle recursive tree behaved
 (FTree.deepl Nothing   m sf) =
   let m_view = (FTree.viewl m)
   (FTree.deepl.1 m_view sf)
@@ -108,6 +116,7 @@
   
 (FTree.deepr pr m sf) = (Deep.go pr m sf)
 
+// insert an element at the left-most position of a tree
 (FTree.push_left Empty a) = (Single a)
 (FTree.push_left (Single b) a) = (Deep.go (One a) Empty (One b))
 (FTree.push_left (Deep _ pr m sf) a) = (FTree.push_left.1 pr m sf a)
@@ -117,7 +126,8 @@
 
 (FTree.push_left.1 pr m sf a) =
   (Deep.go (FTree.digit.snoc a pr) m sf)
-
+  
+// insert an element at the right-most position of a tree
 (FTree.push_right Empty a) = (Single a)
 (FTree.push_right (Single b) a) = (Deep.go (One b) Empty (One a))
 (FTree.push_right (Deep _ pr m (Four e d c b)) a) =
@@ -125,15 +135,18 @@
 (FTree.push_right (Deep _ pr m sf) a) =
   (Deep.go pr m (FTree.digit.cons a sf))
 
-(FTree.digit.snoc a Nothing) = (One a)
-(FTree.digit.snoc a (One b)) = (Two a b)
-(FTree.digit.snoc a (Two b c)) = (Three a b c)
-(FTree.digit.snoc a (Three b c d)) = (Four a b c d)
+// some helper functions for digits
+// you can think of them as fixed sized lists, ranging from 1 to 4 elements in size
 
 (FTree.digit.cons a Nothing) = (One a)
 (FTree.digit.cons a (One b)) = (Two b a)
 (FTree.digit.cons a (Two b c)) = (Three b c a)
 (FTree.digit.cons a (Three b c d)) = (Four b c d a)
+
+(FTree.digit.snoc a Nothing) = (One a)
+(FTree.digit.snoc a (One b)) = (Two a b)
+(FTree.digit.snoc a (Two b c)) = (Three a b c)
+(FTree.digit.snoc a (Three b c d)) = (Four a b c d)
 
 (FTree.digit.head (One a))        = a
 (FTree.digit.head (Two a _))      = a
@@ -157,6 +170,7 @@
 (FTree.digit.last (Three _ _ a))  = a
 (FTree.digit.last (Four _ _ _ a)) = a
 
+// converts a digit to a tree (useful in FTree.deep)
 (FTree.digit.to_tree Nothing) = Empty
 (FTree.digit.to_tree (One a)) = (Single a)
 (FTree.digit.to_tree (Two a b)) = (Deep.go (One a) Empty (One b))
@@ -166,12 +180,21 @@
 (FTree.node.to_digit (Node2 _ a b)) = (Two a b)
 (FTree.node.to_digit (Node3 _ a b c)) = (Three a b c)
 
+// just helper easy functions
 (FTree.headl tree) = (View.get (FTree.viewl tree) λelemλtail (elem))
 (FTree.headr tree) = (View.get (FTree.viewr tree) λelemλtail (elem))
 (FTree.taill tree) = (View.get (FTree.viewl tree) λelemλtail (tail))
 (FTree.tailr tree) = (View.get (FTree.viewr tree) λelemλtail (tail))
 
+// this mess is all the functions used in FTree.split
+// and FTree.split.tree
 
+// FTree.split receives a tree and a predicate function
+// and splits the tree when the predicate turns from false to true
+
+// FTree.split.tree is the main function, and returns a 3-uple (Split left x right)
+// where x is the first element that the predicate turns true, and left and right are
+// well-formed finger trees
 (FTree.split.digit pred i (One a)) = (Split Nothing a Nothing)
 (FTree.split.digit pred i (Two a b)) =
   (Pair.get (Measure a) λa_measureλa_cache
@@ -246,7 +269,9 @@
 // (FTree.nodes.1 a b c (Cons d Nil)) = (Cons (Node2 a b) (Cons (Node2 c d) Nil))
 // (FTree.nodes.1 a b c tail) = (Cons (Node3 a b c) (FTree.nodes tail))
 
-
+// functions that measure the finger trees
+// all of these have been specialized to Sequences (specifically, the binary
+// operation has been substituted by + and the identity element is 0).
 (Node2.go a b) = 
   (Pair.get (Measure a) λa_measureλa_cache
   (Pair.get (Measure b) λb_measureλb_cache
@@ -297,6 +322,8 @@
 // if none of the above matches...
 (Measure x) = (Pair 1 x)
 
+// some small helper functions for sequences
+// all of them are implemented in terms of the ones shown above.
 (Seq.new) = Empty
 
 (Seq.push_front seq x) = (FTree.push_left seq x)
